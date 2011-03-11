@@ -30,7 +30,7 @@ def sendmsg(msg, adr):
     sock.send(msg)
 
 def clean():
-  usercount = 0 
+  userscount = 0 
   users = {}
   sockets = [""]
   gallows.attempts = ATTEMPT_MAX
@@ -40,6 +40,7 @@ class Gallows:
    
   def __init__(self):
     self.attempts = ATTEMPT_MAX
+  
   """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""" 
   @return: слово, сгенерированное из словаря
   """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""   
@@ -84,6 +85,7 @@ class Gallows:
       if tmp2.count("*") == 0:
         guessed = -1
       newuword = tmp2
+    logger.info("New user word: %s" % newuword)
     return [guessed, newuword]
 
   
@@ -94,7 +96,7 @@ class Server:
             Thread.__init__(self)
             
         def run(self):
-            global users, server, rl, sockets, usercount, gallows
+            global users, server, rl, sockets, userscount, gallows
             gallows = Gallows()
             try:
                 server = socket.socket(AF_INET, SOCK_STREAM)
@@ -105,7 +107,7 @@ class Server:
             except socket.error, detail:
                 logger.error(detail)
             USERNAME = "Prisoner"
-            usercount = 0 
+            userscount = 0 
             users = {}
             sockets = [""]
             while 1:
@@ -123,9 +125,9 @@ class Server:
                     if n == server.fileno():
                         sock, addr = server.accept()
                         logger.info("New user #" + str(n))
-                        users[sock] = USERNAME + str(usercount)
-                        usercount += 1
-                        #if (usercount > 1):
+                        users[sock] = USERNAME + str(userscount)
+                        userscount += 1
+                        #if (userscount > 1):
                         restart = True
                           
                     else:
@@ -139,7 +141,7 @@ class Server:
                             break
                         if not text:
                             sendmsg("%s has been disconnected!" % name, sock)
-                            logger.info(name+" has been disconnected!")
+                            logger.info(name + " has been disconnected!")
                             sleep(1)
                             userscount -= 1
                             # close the socket
@@ -186,7 +188,7 @@ class Server:
                     if (restart):
                       clean()
                       word = gallows.generate()
-                      usersword = word[0] + "*" * (len(word) - 2) + word[-1] 
+                      usersword = "*" * len(word)
                       logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
                       sendmsg("Secret word generated! [%s]." % str(usersword), sock)     
                       restart = False
@@ -205,7 +207,6 @@ def disconnect():
     del users[sock]
   sleep(1)
   logger.info("Server closed the connection\n")
-  # close the mainserver
   server.close()
   logger.info("Server closed")
   sockets.append("CLOSED")
