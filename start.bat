@@ -1,0 +1,1 @@
+C:\Python27\python.exe -i "L:\My SVN\Gallows\server.py"
