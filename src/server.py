@@ -1,5 +1,6 @@
 #-*- coding:utf-8 -*-
 """
+@module: server module for gallows
 @license: GNU GPL v2
 @author: Egorov Ilya
 @version: 0.7
@@ -14,7 +15,12 @@ from random import randrange
 import socket, string, sys, threading, select, time, logging
 
 global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, gallows
-HOST, PORT = "", 6000
+global CONNECT_QUERY, ALLOW, DENY
+CONNECT_QUERY = "0"
+ALLOW = "1"
+DENY = "-1"
+ 
+HOST, PORT = "localhost", 14880
 ATTEMPT_MAX = 10
 USERNAME = "Prisoner"
 logger = logging.getLogger("server")
@@ -135,7 +141,7 @@ class Server:
                             if sock.fileno() == n: break
                         name = users[sock]
                         try:
-                            text = sock.recv(1024)
+                            text = sock.recv(1)
                         except socket.error, detail:
                             logger.error(detail)
                             break
@@ -144,9 +150,7 @@ class Server:
                             logger.info(name + " has been disconnected!")
                             sleep(1)
                             userscount -= 1
-                            # close the socket
                             sock.close()
-                            # delete user from list
                             del users[sock]
                         else:
                             try:
@@ -218,3 +222,4 @@ s = Server()
 def start():
   s.lc.start()
 
+start()
