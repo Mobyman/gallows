@@ -4,7 +4,6 @@
 @author: Egorov Ilya
 @version: 0.7
 """
-
 from socket import * 
 from string import *
 from sys import exit
@@ -12,20 +11,19 @@ from threading import *
 from select import select 
 from time import *
 from random import randrange
-import socket, string, sys, threading, select, time
+import socket, string, sys, threading, select, time, logging
 
 global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, gallows
 HOST, PORT = "", 6000
 ATTEMPT_MAX = 10
-USERNAME = "\nPrisoner"
-LOG = "server_log.txt"
-
-
-def logging(text):
-  logg = open(LOG, "a+")
-  logg.write(asctime() + ": " + text + "\n")
-  logg.close()
-  print text + "\n"
+USERNAME = "Prisoner"
+logger = logging.getLogger("server")
+logger.setLevel(logging.DEBUG)
+logstream = logging.StreamHandler()
+logstream.setLevel(logging.DEBUG)
+formatter = logging.Formatter("%(asctime)s:  %(message)s")
+logstream.setFormatter(formatter)
+logger.addHandler(logstream)
 
 def sendmsg(msg, adr):
   for sock in users.keys():
@@ -63,24 +61,29 @@ class Gallows:
     newuword: слово, видимое игрокам, с учетом параметра letter
   """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   def getletter(self, uword, letter):
-    iter1 = True # Edit strings %)
-    guessed = self.secret.count(letter)
-    tmp2 = uword
-    for x in range(len(self.secret)):
-      if (self.secret.find(letter) != -1):
-          pos = self.secret.find(letter)
-          tmp = self.secret
-          print pos
-          self.secret = tmp[:pos] + "@" + tmp[pos+1:]
-          if (iter1):
-            tmp2 = uword[:pos] + letter + uword[pos+1:]
-          else:
-            tmp2 = tmp2[:pos] + letter + tmp2[pos+1:]
-      iter1 = False
-    print "Lettser %s\n Attempts: %d\n" % (letter, self. attempts)
-    if tmp2.count("*") == 0:
-      guessed = -1
-    newuword = tmp2
+    if (uword.count(letter)>0):
+      logger.info("Letter already opened")
+      guessed = -2
+      newuword = uword
+    else:  
+      iter1 = True # Edit strings %)
+      guessed = self.secret.count(letter)
+      tmp2 = uword
+      for x in range(len(self.secret)):
+        if (self.secret.find(letter) != -1):
+            pos = self.secret.find(letter)
+            tmp = self.secret
+            logger.debug("Position:" + str(pos))
+            self.secret = tmp[:pos] + "@" + tmp[pos+1:]
+            if (iter1):
+              tmp2 = uword[:pos] + letter + uword[pos+1:]
+            else:
+              tmp2 = tmp2[:pos] + letter + tmp2[pos+1:]
+        iter1 = False
+      logger.info("Letter %s; Attempts: %d" % (letter, self. attempts))
+      if tmp2.count("*") == 0:
+        guessed = -1
+      newuword = tmp2
     return [guessed, newuword]
 
   
@@ -96,10 +99,12 @@ class Server:
             try:
                 server = socket.socket(AF_INET, SOCK_STREAM)
                 server.bind((HOST, PORT))
+                logger.debug("Server binded")
                 server.listen(1)
+                logger.debug("Server listen")
             except socket.error, detail:
-                print detail
-            USERNAME = "\nPrisoner"
+                logger.error(detail)
+            USERNAME = "Prisoner"
             usercount = 0 
             users = {}
             sockets = [""]
@@ -112,11 +117,12 @@ class Server:
                 try:
                     rl, wl, el = select.select(sockets, [], [], 3)
                 except select.error, detail:
-                    print detail
+                    logger.error(detail)
                     break
                 for n in rl:
                     if n == server.fileno():
                         sock, addr = server.accept()
+                        logger.info("New user #" + str(n))
                         users[sock] = USERNAME + str(usercount)
                         usercount += 1
                         #if (usercount > 1):
@@ -129,11 +135,11 @@ class Server:
                         try:
                             text = sock.recv(1024)
                         except socket.error, detail:
-                            print detail
+                            logger.error(detail)
                             break
                         if not text:
                             sendmsg("%s has been disconnected!" % name, sock)
-                            logging(name+" has been disconnected!")
+                            logger.info(name+" has been disconnected!")
                             sleep(1)
                             userscount -= 1
                             # close the socket
@@ -146,11 +152,12 @@ class Server:
                                 letter = strip(text[6:])
                                 if (len(text) > 1):
                                   sock.close()
-                                  logging("Member %s kicked!") % name
+                                  logger.info("Member %s kicked!") % name
                                 else: """
                               result = []
                               guessed = 0
-                              result = gallows.getletter(usersword, strip(text))
+                              letter = strip(text)
+                              result = gallows.getletter(usersword, letter)
                               usersword = result[1]
                               restart = False
                               if (gallows.attempts == 0):
@@ -161,24 +168,26 @@ class Server:
                                   if (gallows.attempts != 0):
                                     if (result[0] > 0):
                                       sendmsg("Congratulations, %s you've guessed the letter [%s]!\n" % (name, usersword), sock)
-                                    if (result[0] == -1) or (gallows.attempts == 0):
+                                    if (result[0] < 0) or (gallows.attempts == 0):
                                       if (result[0] == -1):
                                         sendmsg("Congratulations, %s you've guessed the word [%s]!\n" % (name, usersword), sock)
                                         restart = True
+                                      if (result[0] == -2):
+                                        sendmsg("Letter [%s] already opened!\n" % letter, sock)                                        
                                 else:
                                   sendmsg("%s, try another letter:( [%s] %d" % (name, usersword, result[0]), sock)
                                   gallows.attempts -= 1
                               
                             except socket.error, detail:
-                                print detail
+                                logger.error(detail)
                                 break
-                            logging(str(name) + ": " + text)
+                            logger.debug(str(name) + ": " + text)
                              
                     if (restart):
                       clean()
                       word = gallows.generate()
                       usersword = word[0] + "*" * (len(word) - 2) + word[-1] 
-                      print "Secret word generated! [%s]. \nFor users: %s\n" % (word, usersword)
+                      logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
                       sendmsg("Secret word generated! [%s]." % str(usersword), sock)     
                       restart = False
                     
@@ -191,20 +200,18 @@ def disconnect():
     try:
       sock.send("server closed the connection")
     except error, detail:
-      print detail
+      logger.error(detail)
     sock.close()
     del users[sock]
   sleep(1)
-  # logging
-  if LOGGING == "ON":
-    logging("server closed the connection\n")
-  print "server closed"
+  logger.info("Server closed the connection\n")
   # close the mainserver
   server.close()
+  logger.info("Server closed")
   sockets.append("CLOSED")
 
 # make a server instance
-s=Server()
+s = Server()
 
 # START the server
 def start():

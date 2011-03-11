@@ -1,1 +1,1 @@
-C:\Python27\python.exe -i "L:\My SVN\Gallows\server.py"
+C:\Python27\python.exe -i "L:\My SVN\Gallows\src\server.py"
