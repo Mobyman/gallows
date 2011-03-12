@@ -12,13 +12,10 @@ from threading import *
 from select import select 
 from time import *
 from random import randrange
-import socket, string, sys, threading, select, time, logging
+from constants import *
+import socket, string, sys, threading, select, time, logging, constants
 
 global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, gallows
-global CONNECT_QUERY, ALLOW, DENY
-CONNECT_QUERY = "0"
-ALLOW = "1"
-DENY = "-1"
  
 HOST, PORT = "localhost", 14880
 ATTEMPT_MAX = 10
@@ -75,6 +72,7 @@ class Gallows:
     else:  
       iter1 = True # Edit strings %)
       guessed = self.secret.count(letter)
+      print self.secret, guessed, letter, "<<<<"
       tmp2 = uword
       for x in range(len(self.secret)):
         if (self.secret.find(letter) != -1):
@@ -102,8 +100,9 @@ class Server:
             Thread.__init__(self)
             
         def run(self):
-            global users, server, rl, sockets, userscount, gallows
+            global users, server, rl, sockets, userscount, gallows, queue_start
             gallows = Gallows()
+            queue_start = []
             try:
                 server = socket.socket(AF_INET, SOCK_STREAM)
                 server.bind((HOST, PORT))
@@ -116,6 +115,9 @@ class Server:
             userscount = 0 
             users = {}
             sockets = [""]
+            restart = False
+            result = []
+            guessed = 0
             while 1:
                 if sockets[-1] == "CLOSED":
                     break
@@ -134,6 +136,7 @@ class Server:
                         users[sock] = USERNAME + str(userscount)
                         userscount += 1
                         #if (userscount > 1):
+                        new = sock
                         restart = True
                           
                     else:
@@ -141,49 +144,58 @@ class Server:
                             if sock.fileno() == n: break
                         name = users[sock]
                         try:
-                            text = sock.recv(1)
+                            text = sock.recv(128)
+                            parse = text.split("@")
                         except socket.error, detail:
                             logger.error(detail)
+                            sock.close()
                             break
                         if not text:
-                            sendmsg("%s has been disconnected!" % name, sock)
+                            sendmsg(CONN_CLOSE_CLI + "_%s@" % name, sock)
                             logger.info(name + " has been disconnected!")
                             sleep(1)
                             userscount -= 1
                             sock.close()
-                            del users[sock]
+                            del sock
                         else:
                             try:
-                              a = """if (text[:6] == "!char "):
-                                letter = strip(text[6:])
-                                if (len(text) > 1):
-                                  sock.close()
-                                  logger.info("Member %s kicked!") % name
-                                else: """
-                              result = []
-                              guessed = 0
-                              letter = strip(text)
-                              result = gallows.getletter(usersword, letter)
-                              usersword = result[1]
-                              restart = False
-                              if (gallows.attempts == 0):
-                                sendmsg("You are failed!\n Word: %s. Ha-ha-ha!\n" % (word), sock)
-                                restart = True
-                              else:
-                                if (result[0] != 0):
-                                  if (gallows.attempts != 0):
-                                    if (result[0] > 0):
-                                      sendmsg("Congratulations, %s you've guessed the letter [%s]!\n" % (name, usersword), sock)
-                                    if (result[0] < 0) or (gallows.attempts == 0):
-                                      if (result[0] == -1):
-                                        sendmsg("Congratulations, %s you've guessed the word [%s]!\n" % (name, usersword), sock)
-                                        restart = True
-                                      if (result[0] == -2):
-                                        sendmsg("Letter [%s] already opened!\n" % letter, sock)                                        
-                                else:
-                                  sendmsg("%s, try another letter:( [%s] %d" % (name, usersword, result[0]), sock)
-                                  gallows.attempts -= 1
-                              
+                              for item in parse:
+                                if item[0] == "#":
+                                  if text[0:4] == QUERY_CONN:
+                                    sock.send(CONN_ALLOW + "@")
+                                    queue_start.append(sock)
+                                    text = ""
+                                    restart = True
+                                    break
+                                  lst = item.split("_")
+                                  if lst[0] == PACKET_LETTER:
+                                    letter = lst[1]
+                                    result = gallows.getletter(usersword, letter)
+                                    logger.info("S: %s UW: %s Text: %s Letter: %s Result: %s" % (gallows.secret, usersword, text, letter, result))
+                                    usersword = result[1]
+                                    if (gallows.attempts == 0):
+                                      sendmsg(WORD_FAIL + "_%s@" % (word), sock)
+                                      restart = True
+                                    else:
+                                      if (result[0] != 0):
+                                        if (gallows.attempts != 0):
+                                          if (result[0] > 0):
+                                            sendmsg(LETTER_WIN + "_%s_%s_%s_%s@" % (name, letter, usersword, gallows.attempts), sock)
+                                          if (result[0] < 0) or (gallows.attempts == 0):
+                                            if (result[0] == -1):
+                                              sendmsg(WORD_WIN + "_%s_%s@" % (name, usersword), sock)
+                                              restart = True
+                                            if (result[0] == -2):
+                                              sendmsg(LETTER_ALREADY + "_%s@" % letter, sock)                                        
+                                      else:
+                                        sendmsg(LETTER_FAIL + "_%s_%s_%s_%s@" % (name, letter, usersword, gallows.attempts), sock)
+                                        gallows.attempts -= 1
+                                    for sock in queue_start:
+                                      sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)     
+                                    break
+                                  if lst[0] == QUERY_USERWORD:
+                                    sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
+                                
                             except socket.error, detail:
                                 logger.error(detail)
                                 break
@@ -194,7 +206,9 @@ class Server:
                       word = gallows.generate()
                       usersword = "*" * len(word)
                       logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
-                      sendmsg("Secret word generated! [%s]." % str(usersword), sock)     
+                      if (new == sock):
+                        sock.send(CONN_ALLOW)
+                      sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)     
                       restart = False
                     
     lc=Listen_for_connections()
@@ -204,7 +218,7 @@ def disconnect():
   global getout
   for sock in users.keys():
     try:
-      sock.send("server closed the connection")
+      sock.send("#510")
     except error, detail:
       logger.error(detail)
     sock.close()
