@@ -21,4 +21,4 @@ WORD_FAIL       = "#410"
 WORD_WIN        = "#411"
 
 CONN_CLOSE_CLI  = "#500"
-CONN_CLISE_SERV = "#510"
+CONN_CLOSE_SERV = "#510"

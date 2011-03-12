@@ -15,7 +15,7 @@ from random import randrange
 from constants import *
 import socket, string, sys, threading, select, time, logging, constants
 
-global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, gallows
+global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME
  
 HOST, PORT = "localhost", 14880
 ATTEMPT_MAX = 10
@@ -100,7 +100,7 @@ class Server:
             Thread.__init__(self)
             
         def run(self):
-            global users, server, rl, sockets, userscount, gallows, queue_start
+            global users, server, rl, sockets, userscount, gallows, queue_start, usersword, letter
             gallows = Gallows()
             queue_start = []
             try:
@@ -136,9 +136,7 @@ class Server:
                         users[sock] = USERNAME + str(userscount)
                         userscount += 1
                         #if (userscount > 1):
-                        new = sock
-                        restart = True
-                          
+                        new = sock                          
                     else:
                         for sock in users.keys():
                             if sock.fileno() == n: break
@@ -164,18 +162,28 @@ class Server:
                                   if text[0:4] == QUERY_CONN:
                                     sock.send(CONN_ALLOW + "@")
                                     queue_start.append(sock)
-                                    text = ""
-                                    restart = True
+                                    word = gallows.generate()
+                                    usersword = "*" * len(word)
+                                    logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
+                                    sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)  
+
                                     break
+                                  
                                   lst = item.split("_")
+                                  
+                                  if lst[0] == QUERY_USERWORD:
+                                    sock.send(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts))
+                                      
                                   if lst[0] == PACKET_LETTER:
                                     letter = lst[1]
-                                    result = gallows.getletter(usersword, letter)
+                                    result = gallows.getletter(usersword, strip(letter))
                                     logger.info("S: %s UW: %s Text: %s Letter: %s Result: %s" % (gallows.secret, usersword, text, letter, result))
                                     usersword = result[1]
+                                    
                                     if (gallows.attempts == 0):
                                       sendmsg(WORD_FAIL + "_%s@" % (word), sock)
                                       restart = True
+                                      
                                     else:
                                       if (result[0] != 0):
                                         if (gallows.attempts != 0):
@@ -200,15 +208,16 @@ class Server:
                                 logger.error(detail)
                                 break
                             logger.debug(str(name) + ": " + text)
-                             
+                    
+                    if (new == sock):
+                      sock.send(CONN_ALLOW)
+                      
                     if (restart):
                       clean()
                       word = gallows.generate()
                       usersword = "*" * len(word)
                       logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
-                      if (new == sock):
-                        sock.send(CONN_ALLOW)
-                      sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)     
+                      sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)  
                       restart = False
                     
     lc=Listen_for_connections()
