@@ -1,22 +1,22 @@
-#-*- coding:utf-8 -*-
-"""
-@module: server module for gallows
+# -*- coding: utf-8 -*-
+
+"""@module: server module for gallows
 @license: GNU GPL v2
 @author: Egorov Ilya
 @version: 0.7
 """
-from socket import * 
+from socket import *
 from string import *
 from sys import exit
-from threading import * 
-from select import select 
+from threading import *
+from select import select
 from time import *
 from random import randrange
 from constants import *
-import socket, string, sys, threading, select, time, logging, constants
+import socket, string, sys, threading, select, time, logging, constants, re
 
 global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME
- 
+
 HOST, PORT = "localhost", 14880
 ATTEMPT_MAX = 10
 USERNAME = "Prisoner"
@@ -33,20 +33,20 @@ def sendmsg(msg, adr):
     sock.send(msg)
 
 def clean():
-  userscount = 0 
+  userscount = 0
   users = {}
   sockets = [""]
   gallows.attempts = ATTEMPT_MAX
 
-  
+
 class Gallows:
-   
+
   def __init__(self):
     self.attempts = ATTEMPT_MAX
-  
-  """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""" 
+
+  """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   @return: слово, сгенерированное из словаря
-  """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""   
+  """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   def generate(self):
     wordsfile = open('words.txt', 'r')
     words = wordsfile.readlines()
@@ -55,7 +55,7 @@ class Gallows:
     wordsfile.close()
     self.secret = strip(words[wordindex])
     return self.secret
-  
+
   """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   @param:
     uword: слово, видимое игрокам
@@ -65,11 +65,11 @@ class Gallows:
     newuword: слово, видимое игрокам, с учетом параметра letter
   """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   def getletter(self, uword, letter):
-    if (uword.count(letter)>0):
+    if (uword.count(letter) > 0):
       logger.info("Letter already opened")
       guessed = -2
       newuword = uword
-    else:  
+    else:
       iter1 = True # Edit strings %)
       guessed = self.secret.count(letter)
       print self.secret, guessed, letter, "<<<<"
@@ -79,11 +79,11 @@ class Gallows:
             pos = self.secret.find(letter)
             tmp = self.secret
             logger.debug("Position:" + str(pos))
-            self.secret = tmp[:pos] + "@" + tmp[pos+1:]
+            self.secret = tmp[:pos] + "@" + tmp[pos + 1:]
             if (iter1):
-              tmp2 = uword[:pos] + letter + uword[pos+1:]
+              tmp2 = uword[:pos] + letter + uword[pos + 1:]
             else:
-              tmp2 = tmp2[:pos] + letter + tmp2[pos+1:]
+              tmp2 = tmp2[:pos] + letter + tmp2[pos + 1:]
         iter1 = False
       logger.info("Letter %s; Attempts: %d" % (letter, self. attempts))
       if tmp2.count("*") == 0:
@@ -92,13 +92,13 @@ class Gallows:
     logger.info("New user word: %s" % newuword)
     return [guessed, newuword]
 
-  
+
 class Server:
-    # listen for connections 
+    # listen for connections
     class Listen_for_connections(Thread):
         def __init__(self):
             Thread.__init__(self)
-            
+
         def run(self):
             global users, server, rl, sockets, userscount, gallows, queue_start, usersword, letter
             gallows = Gallows()
@@ -112,12 +112,14 @@ class Server:
             except socket.error, detail:
                 logger.error(detail)
             USERNAME = "Prisoner"
-            userscount = 0 
+            userscount = 0
             users = {}
             sockets = [""]
             restart = False
             result = []
             guessed = 0
+            fail = {}
+            kick = False
             while 1:
                 if sockets[-1] == "CLOSED":
                     break
@@ -136,7 +138,7 @@ class Server:
                         users[sock] = USERNAME + str(userscount)
                         userscount += 1
                         #if (userscount > 1):
-                        new = sock                          
+                        new = sock
                     else:
                         for sock in users.keys():
                             if sock.fileno() == n: break
@@ -145,8 +147,9 @@ class Server:
                             text = sock.recv(128)
                             parse = text.split("@")
                         except socket.error, detail:
-                            logger.error(detail)
-                            sock.close()
+                            userscount -= 1
+                            logger.info(name + " has been disconnected!")
+                            del users[sock]
                             break
                         if not text:
                             sendmsg(CONN_CLOSE_CLI + "_%s@" % name, sock)
@@ -154,7 +157,7 @@ class Server:
                             sleep(1)
                             userscount -= 1
                             sock.close()
-                            del sock
+                            del users[sock]
                         else:
                             try:
                               for item in parse:
@@ -165,63 +168,75 @@ class Server:
                                     word = gallows.generate()
                                     usersword = "*" * len(word)
                                     logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
-                                    sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)  
-
+                                    sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
                                     break
-                                  
+
                                   lst = item.split("_")
-                                  
+
                                   if lst[0] == QUERY_USERWORD:
                                     sock.send(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts))
-                                      
+                                    restart = True
+
                                   if lst[0] == PACKET_LETTER:
-                                    letter = lst[1]
-                                    result = gallows.getletter(usersword, strip(letter))
-                                    logger.info("S: %s UW: %s Text: %s Letter: %s Result: %s" % (gallows.secret, usersword, text, letter, result))
-                                    usersword = result[1]
-                                    
-                                    if (gallows.attempts == 0):
-                                      sendmsg(WORD_FAIL + "_%s@" % (word), sock)
-                                      restart = True
-                                      
-                                    else:
-                                      if (result[0] != 0):
-                                        if (gallows.attempts != 0):
-                                          if (result[0] > 0):
-                                            sendmsg(LETTER_WIN + "_%s_%s_%s_%s@" % (name, letter, usersword, gallows.attempts), sock)
-                                          if (result[0] < 0) or (gallows.attempts == 0):
-                                            if (result[0] == -1):
-                                              sendmsg(WORD_WIN + "_%s_%s@" % (name, usersword), sock)
-                                              restart = True
-                                            if (result[0] == -2):
-                                              sendmsg(LETTER_ALREADY + "_%s@" % letter, sock)                                        
+                                    if len(lst[1])== 1 and re.match("^[a-z]*$", lst[1]):
+                                      letter = lst[1]
+                                      result = gallows.getletter(usersword, strip(letter))
+                                      logger.info("S: %s UW: %s Text: %s Letter: %s Result: %s" % (gallows.secret, usersword, text, letter, result))
+                                      usersword = result[1]
+
+                                      if (gallows.attempts == 0):
+                                        sendmsg(WORD_FAIL + "_%s@" % (word), sock)
+                                        restart = True
+
                                       else:
-                                        sendmsg(LETTER_FAIL + "_%s_%s_%s_%s@" % (name, letter, usersword, gallows.attempts), sock)
-                                        gallows.attempts -= 1
-                                    for sock in queue_start:
-                                      sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)     
-                                    break
+                                        if (result[0] != 0):
+                                          if (gallows.attempts != 0):
+                                            if (result[0] > 0):
+                                              sendmsg(LETTER_WIN + "_%s_%s_%s_%s@" % (name, letter, usersword, gallows.attempts), sock)
+                                            if (result[0] < 0) or (gallows.attempts == 0):
+                                              if (result[0] == -1):
+                                                sendmsg(WORD_WIN + "_%s_%s@" % (name, usersword), sock)
+                                                restart = True
+                                              if (result[0] == -2):
+                                                sendmsg(LETTER_ALREADY + "_%s@" % letter, sock)
+                                        else:
+                                          sendmsg(LETTER_FAIL + "_%s_%s_%s_%s@" % (name, letter, usersword, gallows.attempts), sock)
+                                          gallows.attempts -= 1
+                                      for sock in queue_start:
+                                        sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
+                                      break
                                   if lst[0] == QUERY_USERWORD:
                                     sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
-                                
+                                  else:
+                                    kick = True
+                                else:
+                                  kick = True
                             except socket.error, detail:
                                 logger.error(detail)
                                 break
                             logger.debug(str(name) + ": " + text)
-                    
+
+                    if (kick):
+                      logger.info("Client %s kicked!" % name)
+                      sock.send(CONN_CLOSE_KICK)
+                      userscount -= 1
+                      del users[sock]
+                      new = None
+                      sock.close()
+
                     if (new == sock):
                       sock.send(CONN_ALLOW)
-                      
+
                     if (restart):
                       clean()
                       word = gallows.generate()
                       usersword = "*" * len(word)
                       logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
-                      sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)  
+                      sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
                       restart = False
-                    
-    lc=Listen_for_connections()
-    
+
+    lc = Listen_for_connections()
+
 
 def disconnect():
   global getout
