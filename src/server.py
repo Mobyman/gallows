@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-"""@module: server module for gallows
+"""
+@module: server module for gallows
 @license: GNU GPL v2
 @author: Egorov Ilya
 @version: 0.7
@@ -13,10 +14,11 @@ from select import select
 from time import *
 from random import randrange
 from constants import *
-import socket, string, sys, threading, select, time, logging, constants, re
+import socket, string, sys, threading, select, time, logging, constants, re, pickle
 
-global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME
+global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, ALT_SERVER
 
+ALT_SERVER = False
 HOST, PORT = "localhost", 14880
 ATTEMPT_MAX = 10
 USERNAME = "Prisoner"
@@ -27,6 +29,10 @@ logstream.setLevel(logging.DEBUG)
 formatter = logging.Formatter("%(asctime)s:  %(message)s")
 logstream.setFormatter(formatter)
 logger.addHandler(logstream)
+
+def pack(obj):
+  p = pickle.dumps(obj)
+  print p
 
 def sendmsg(msg, adr):
   for sock in users.keys():
@@ -185,7 +191,7 @@ class Server:
                                       usersword = result[1]
 
                                       if (gallows.attempts == 0):
-                                        sendmsg(WORD_FAIL + "_%s@" % (word), sock)
+                                        sendmsg(WORD_FAIL + "_%s_%s@" % (name, word), sock)
                                         restart = True
 
                                       else:
@@ -204,6 +210,7 @@ class Server:
                                           gallows.attempts -= 1
                                       for sock in queue_start:
                                         sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
+                                        pack(gallows)
                                       break
                                   if lst[0] == QUERY_USERWORD:
                                     sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
