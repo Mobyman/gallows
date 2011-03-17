@@ -25,6 +25,7 @@ logstream.setLevel(logging.DEBUG)
 def answerparse(code="", param=""):
   
   lst = [""]
+  parse = {}
   
   if param != "":
     param = param.strip()
@@ -32,51 +33,75 @@ def answerparse(code="", param=""):
           
   if code == PACKET_USERWORD: #userword
     if lst.__len__() == 2:
+      parse[PACKET_USERWORD] = lst
       logger.debug("Userword: %s, attempts: %s" % (lst[0], lst[1]))
     else:
+      parse[PACKET_USERWORD] = None
       logger.debug("USERWORD Undefined params! [%s] Lst: %s" % (code, lst))
-    
+    return parse
+
   elif code == LETTER_FAIL or code == LETTER_WIN: #letter fail or win
     if lst.__len__() == 4:
       logger.debug("Username: %s, letter: %s, word: %s, attempts: %s" % (lst[0], lst[1], lst[2], lst[3]))
       if(code == LETTER_WIN):
-        return 1
+        parse[LETTER_WIN] = lst
       else:
-        return 0
+        parse[LETTER_FAIL] = lst
     else:
+      parse[LETTER_FAIL] = None
       logger.debug("LETTER_FAIL_OR_WIN Undefined params! [%s] Lst: %s" % (code, lst))
-      
-  elif code == LETTER_ALREADY: #letter already exists
+    return parse
+    
+  elif code == LETTER_ALREADY: #letter already exists. TO-DO: Return letter (lst[0])
+    parse[LETTER_ALREADY] = lst
     logger.debug("Letter already exists!")
+    return parse
     
   elif code == WORD_FAIL or code == WORD_WIN: #word fail
     if lst.__len__() == 2:
       if code == WORD_FAIL:
+        parse[WORD_FAIL] = lst
         logger.debug("Word fail!")
       else:
+        parse[WORD_WIN] = lst
         logger.debug("Word win!")
       cli.send("", QUERY_USERWORD)
       logger.debug("Username: %s, Word: %s" % (lst[0], lst[1]))
-      
     else:
+      parse[WORD_FAIL] = None
+      parse[WORD_WIN] = None
       logger.debug("WORD_FAIL_OR_WIN Undefined params! [%s] Lst: %s" % (code, lst))
+    return parse
       
   elif code == CONN_CLOSE_CLI: #client close
     if lst.__len__() == 1:
-        logger.debug("%s has been disconnected" % lst[0])
+      parse[CONN_CLOSE_CLI] = lst
+      logger.debug("%s has been disconnected" % lst[0])
     else:
-      logger.debug("CONN_CLOSE_CLI Undefined params! [%s] Lst: %s" % (code, lst))      
+      parse[CONN_CLOSE_CLI] = None
+      logger.debug("CONN_CLOSE_CLI Undefined params! [%s] Lst: %s" % (code, lst))
+    return parse
+
   elif code == CONN_CLOSE_SERV: #server close
     cli.connected = False
+    parse[CONN_CLOSE_SERV] = lst
     logger.debug("Server close connection") #lst[0] -- isAlternativeServer
+    return parse
+    
   elif code == CONN_CLOSE_KICK: #server close
     cli.connected = False
     logger.debug("You has been kicked!") #lst[0] -- isAlternativeServer
+    parse[CONN_CLOSE_KICK] = True
   else:      
     logger.debug("Error code: param: %s" % (code, param))
-    
+    parse[CONN_CLOSE_KICK] = None
+  return parse
+  
+  
 class Client():
   
+  parsedanswer = []
+    
   def connect(self):
     self.connected = False
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -119,9 +144,9 @@ class Client():
                   if code != CONN_ALLOW:
                     if len(item) > 4:
                       param = item[5:]
-                      answerparse(code, param)
+                      cli.parsedanswer.append(answerparse(code, param))
                     else:
-                      answerparse(code)  
+                      cli.parsedanswer.append(answerparse(code))
 
     listen = Listen()
     listen.start()
