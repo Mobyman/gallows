@@ -62,7 +62,7 @@ def answerparse(code="", param=""):
       logger.debug("WORD_FAIL_OR_WIN Undefined params! [%s] Lst: %s" % (code, lst))
       
   elif code == CONN_CLOSE_CLI: #client close
-    if lst.__len__() == 0:
+    if lst.__len__() == 1:
         logger.debug("%s has been disconnected" % lst[0])
     else:
       logger.debug("CONN_CLOSE_CLI Undefined params! [%s] Lst: %s" % (code, lst))      
