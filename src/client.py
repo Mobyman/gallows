@@ -40,6 +40,15 @@ def answerparse(code="", param=""):
       logger.debug("USERWORD Undefined params! [%s] Lst: %s" % (code, lst))
     return parse
 
+  if code == ANSWER_USERCOUNT:
+    if lst.__len__() == 1:
+      parse[ANSWER_USERCOUNT] = lst
+      logger.debug("Userscount: %s" % (lst[0]))
+    else:
+      parse[ANSWER_USERCOUNT] = None
+      logger.debug("Userscount undefined!")
+    return parse
+
   elif code == LETTER_FAIL or code == LETTER_WIN: #letter fail or win
     if lst.__len__() == 4:
       logger.debug("Username: %s, letter: %s, word: %s, attempts: %s" % (lst[0], lst[1], lst[2], lst[3]))
@@ -92,10 +101,11 @@ def answerparse(code="", param=""):
     cli.connected = False
     logger.debug("You has been kicked!") #lst[0] -- isAlternativeServer
     parse[CONN_CLOSE_KICK] = True
+ 
   else:      
     logger.debug("Error code: param: %s" % (code, param))
     parse[CONN_CLOSE_KICK] = None
-  return parse
+    return parse
   
   
 class Client():

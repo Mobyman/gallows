@@ -11,7 +11,7 @@ from threading import *
 from select import select
 from constants import *
 from gallows import *
-import socket, threading, select, logging, gallows, re
+import socket, threading, select, logging, gallows_logic, re
 
 global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, ALT_SERVER
 
@@ -95,6 +95,8 @@ class Server:
                             userscount -= 1
                             logger.info(name + " has been disconnected!")
                             del users[sock]
+                            sendmsg(ANSWER_USERCOUNT + "_%s@" % (userscount), sock)
+
                             break
                         if not text:
                             logger.info(name + " has been disconnected!")
@@ -102,7 +104,7 @@ class Server:
                             userscount -= 1
                             sock.close()
                             del users[sock]
-                            
+                            sendmsg(ANSWER_USERCOUNT + "_%s@" % (userscount), sock)                            
                         else:
                             try:
                               for item in parse:
@@ -114,14 +116,19 @@ class Server:
                                     usersword = "*" * len(word)
                                     logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
                                     sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
+                                    sendmsg(ANSWER_USERCOUNT + "_%s@" % (userscount), sock)
                                     break
 
                                   lst = item.split("_")
-
+                                  logger.debug(lst)
                                   if lst[0] == QUERY_USERWORD:
                                     sock.send(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts))
                                     restart = True
-
+                                  
+                                  if lst[0] == QUERY_USERCOUNT:
+                                    sendmsg(ANSWER_USERCOUNT + "_%s@" % (userscount), sock)
+                                    logger.info("Userscount is %s" % (userscount))
+                                      
                                   if lst[0] == PACKET_LETTER:
                                     if len(lst[1])== 1 and re.match("^[a-z]*$", lst[1]):
                                       letter = lst[1]
@@ -132,7 +139,6 @@ class Server:
                                       if (gallows.attempts == 0):
                                         sendmsg(WORD_FAIL + "_%s_%s@" % (name, word), sock)
                                         restart = True
-
                                       else:
                                         if (result[0] != 0):
                                           if (gallows.attempts != 0):
@@ -152,6 +158,8 @@ class Server:
                                       break
                                   if lst[0] == QUERY_USERWORD:
                                     sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
+                                    logger.info("Userscount is %s" % (userscount))
+                                    
                                   else:
                                     kick = True
                                 else:
@@ -167,6 +175,7 @@ class Server:
                       userscount -= 1
                       del users[sock]
                       new = None
+                      sendmsg(ANSWER_USERCOUNT + "_%s@" % (userscount), sock)
                       sock.close()
 
                     if (new == sock):
