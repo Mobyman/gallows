@@ -40,3 +40,6 @@ WORD_WIN            = "#411"
 CONN_CLOSE_CLI      = "#500"
 CONN_CLOSE_SERV     = "#510"
 CONN_CLOSE_KICK     = "#511"
+
+CONN_PING           = "#ping"
+CONN_PONG           = "#pong"

@@ -10,13 +10,14 @@ from socket import *
 from threading import *
 from select import select
 from constants import *
-from gallows import *
+from gallows_logic import *
+from time import sleep
 import socket, threading, select, logging, gallows_logic, re
 
-global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, ALT_SERVER
+global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, ALT_SERVER, pong
 
 ALT_SERVER = False
-HOST, PORT = "localhost", 14880
+HOST, PORT = ("localhost", 14880)
 ATTEMPT_MAX = 10
 USERNAME = "Prisoner"
 logger = logging.getLogger("server_protocol")
@@ -37,6 +38,39 @@ def clean():
   sockets = [""]
   gallows.attempts = ATTEMPT_MAX
 
+class Ponger(Thread):
+  
+  def __init__(self):
+      Thread.__init__(self)
+  
+  def run(self):
+      try:
+        pong = socket.socket(AF_INET, SOCK_STREAM)
+        pong.bind((HOST, 14881))
+        logger.debug("Ponger server binded")
+        pong.listen(1)
+        logger.debug("Ponger server listen on port " + str(14881))
+      except socket.error, detail:
+        logger.error(detail)
+      pingsock, addr = pong.accept()
+      logger.info("Ponger connected %s" % str(addr))
+      try:
+        while True:
+          data = pingsock.recv(128)
+          ping = data.strip()
+          ping = ping.split("@")
+          if not data: logger.info("Pong server error! %s" % pingsock.fileno())
+          else:           
+            for item in ping:
+              if len(ping) > 0:
+                if item[0] == "#":
+                  code = item[:5] 
+                  if code == CONN_PING:
+                      pingsock.send(CONN_PONG)
+                      logger.info("Pong server success! %s" % pingsock.fileno())
+                      sleep(5)
+      except socket.error, detail:
+        logger.info("Pong server error! %s" % pingsock.fileno())        
 
 class Server:
     # listen for connections
@@ -65,7 +99,7 @@ class Server:
             guessed = 0
             fail = {}
             kick = False
-            while 1:
+            while True:
                 if sockets[-1] == "CLOSED":
                     break
                 sockets = [server.fileno()]
@@ -189,7 +223,10 @@ class Server:
                       sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
                       restart = False
 
+    ponger = Ponger()
+    ponger.start()
     lc = Listen_for_connections()
+
     
     def disconnect(self):
       global getout
