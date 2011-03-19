@@ -30,6 +30,7 @@ class Gallows:
 
   def __init__(self):
     self.attempts = ATTEMPT_MAX
+    self.generated = False
 
   """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   @return: слово, сгенерированное из словаря
@@ -42,6 +43,9 @@ class Gallows:
     wordsfile.close()
     self.secret = strip(words[wordindex])
     self.used_letters = []
+    self.generated = True
+    logger.debug("Generated TRUE")
+    self.newuword = "*" * len(self.secret)
     return self.secret
 
   """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -56,12 +60,11 @@ class Gallows:
     if (uword.count(letter) > 0) or (self.used_letters.count(letter) > 0):
       logger.info("Letter already opened")
       guessed = -2
-      newuword = uword
+      self.newuword = uword
     else:
       self.used_letters.append(letter)
       iter1 = True 
       guessed = self.secret.count(letter)
-      print self.secret, guessed, letter, "<<<<"
       tmp2 = uword
       for x in range(len(self.secret)):
         if (self.secret.find(letter) != -1):
@@ -77,6 +80,6 @@ class Gallows:
       logger.info("Letter %s; Attempts: %d" % (letter, self. attempts))
       if tmp2.count("*") == 0:
         guessed = -1
-      newuword = tmp2
-    logger.info("New user word: %s" % newuword)
-    return [guessed, newuword]
+      self.newuword = tmp2
+    logger.info("New user word: %s" % self.newuword)
+    return [guessed, self.newuword]

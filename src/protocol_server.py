@@ -12,12 +12,16 @@ from select import select
 from constants import *
 from gallows_logic import *
 from time import sleep
+from sys import exit
+from optparse import OptionParser
+
 import socket, threading, select, logging, gallows_logic, re
 
-global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, ALT_SERVER, pong
+global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, main_server, pong
 
-ALT_SERVER = False
-HOST, PORT = ("localhost", 14880)
+HOST_PING, PORT_PING = ("localhost", 14881)
+HOST_PONG, PORT_PONG = ("localhost", 14881)
+
 ATTEMPT_MAX = 10
 USERNAME = "Prisoner"
 logger = logging.getLogger("server_protocol")
@@ -38,46 +42,100 @@ def clean():
   sockets = [""]
   gallows.attempts = ATTEMPT_MAX
 
+
+class Pinger(Thread):
+
+  def __init__(self):
+    Thread.__init__(self)
+    
+  def run(self):
+   self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+   self.sock.connect((HOST_PING, PORT_PING))
+   while True:
+    try:
+      self.sock.send(CONN_PING + "@")
+      data = self.sock.recv(128)
+    except socket.error, detail:
+      logging.error(detail)
+      logger.info("Ping server error! %s" % self.sock.fileno())
+      break
+    if not data: logger.info("Ping server error! %s" % self.sock.fileno())
+    else:
+      answer = data.strip()
+      answer = answer.split("_")
+      for item in answer:
+        if len(item) > 0:
+          if item[0] == "#":
+            code = item[:4] 
+            if code == CONN_PONG:
+              logger.info("Ping server success! %s" % self.sock.fileno())
+              sleep(10)
+              self.sock.send(CONN_PING + "_@")
+            elif code == SYNC_SERVER_PACKET:
+              print answer
+              
+              sleep(10)
+              self.sock.send(SYNC_SERVER_PACKET_APPLY + "@")
+            else:
+              logger.error("Ping server error! CODE: '%s'" % code)
+  
 class Ponger(Thread):
   
   def __init__(self):
       Thread.__init__(self)
-  
+      
   def run(self):
       try:
         pong = socket.socket(AF_INET, SOCK_STREAM)
-        pong.bind((HOST, 14881))
+        pong.bind((HOST_PONG, PORT_PONG))
         logger.debug("Ponger server binded")
         pong.listen(1)
-        logger.debug("Ponger server listen on port " + str(14881))
+        logger.debug("Ponger server listen on port " + str(PORT_PONG))
+        sleep(15)
       except socket.error, detail:
         logger.error(detail)
       pingsock, addr = pong.accept()
       logger.info("Ponger connected %s" % str(addr))
       try:
         while True:
-          data = pingsock.recv(128)
+          data = pingsock.recv(32)
+          pingsock.send(CONN_PONG + "_@")
           ping = data.strip()
           ping = ping.split("@")
           if not data: logger.info("Pong server error! %s" % pingsock.fileno())
           else:           
             for item in ping:
               if len(ping) > 0:
-                if item[0] == "#":
-                  code = item[:5] 
-                  if code == CONN_PING:
-                      pingsock.send(CONN_PONG)
-                      logger.info("Pong server success! %s" % pingsock.fileno())
-                      sleep(5)
+                if len(item) > 0:
+                  if item[0] == "#":
+                    code = item[:4] 
+                    if code == CONN_PING:
+                        pingsock.send(SYNC_SERVER_PACKET + "_%s_%s_%s_%s_" % (gallows.secret, str(gallows.attempts), gallows.newuword, str(gallows.used_letters)))
+                        logger.info("Send: " + SYNC_SERVER_PACKET + "_%s_%s_%s_%s_" % (gallows.secret, str(gallows.attempts), gallows.newuword, str(gallows.used_letters)))
+                        sleep(10)
+                    elif code == SYNC_SERVER_PACKET_APPLY:
+                        logger.info("SYNC OK! %s" % pingsock.fileno())
+                    else:
+                        logger.info("Pong server error! %s" % pingsock.fileno())        
+                        
       except socket.error, detail:
         logger.info("Pong server error! %s" % pingsock.fileno())        
 
 class Server:
     # listen for connections
+    global mainserver
+    
     class Listen_for_connections(Thread):
         def __init__(self):
             Thread.__init__(self)
-
+            
+        
+        def type(self, mainserver):
+          if (mainserver):
+            self.mainserver = True
+          else:
+            self.mainserver = False
+            
         def run(self):
             global users, server, rl, sockets, userscount, gallows, queue_start, usersword, letter
             gallows = Gallows()
@@ -116,7 +174,6 @@ class Server:
                         logger.info("New user #" + str(n))
                         users[sock] = USERNAME + str(userscount)
                         userscount += 1
-                        #if (userscount > 1):
                         new = sock
                     else:
                         for sock in users.keys():
@@ -152,7 +209,7 @@ class Server:
                                     sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
                                     sendmsg(ANSWER_USERCOUNT + "_%s@" % (userscount), sock)
                                     break
-
+                                    
                                   lst = item.split("_")
                                   logger.debug(lst)
                                   if lst[0] == QUERY_USERWORD:
@@ -222,12 +279,10 @@ class Server:
                       logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
                       sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
                       restart = False
-
-    ponger = Ponger()
-    ponger.start()
+  
     lc = Listen_for_connections()
 
-    
+
     def disconnect(self):
       global getout
       for sock in users.keys():
@@ -242,3 +297,27 @@ class Server:
       server.close()
       logger.info("Server closed")
       sockets.append("CLOSED")
+
+parser = OptionParser()
+parser.add_option("-t", "--type", dest="type", help="--- SERVER TYPE --- ""Main server: -t m""Alternative server: -t a")
+(options, args) = parser.parse_args()
+
+if (options.type == "a"):
+  HOST, PORT = ("localhost", 14879)
+  pinger = Pinger()
+  pinger.start()    
+  main_server = False
+  
+elif (options.type == "m"):    
+  HOST, PORT = ("localhost", 14880)
+  ponger = Ponger()
+  ponger.start()
+  main_server = True
+else: sys.exit(0)
+
+
+s = Server()      
+def start():
+  s.lc.start()
+
+start()

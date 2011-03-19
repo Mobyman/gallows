@@ -41,5 +41,8 @@ CONN_CLOSE_CLI      = "#500"
 CONN_CLOSE_SERV     = "#510"
 CONN_CLOSE_KICK     = "#511"
 
-CONN_PING           = "#ping"
-CONN_PONG           = "#pong"
+CONN_PING           = "#698"
+CONN_PONG           = "#699"
+
+SYNC_SERVER_PACKET  = "#720"
+SYNC_SERVER_PACKET_APPLY  = "#721"
