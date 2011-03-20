@@ -12,10 +12,9 @@ from select import select
 from constants import *
 from gallows_logic import *
 from time import sleep
-from sys import exit
 from optparse import OptionParser
-
-import socket, threading, select, logging, gallows_logic, re
+from sys import exit
+import socket, threading, select, logging, gallows_logic, re, sys
 
 global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, main_server, pong
 
@@ -58,42 +57,47 @@ class Pinger(Thread):
       start()
   
   def run(self):
-   self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-   self.sock.connect((HOST_PING, PORT_PING))
-   while True:
     try:
-      self.sock.send(CONN_PING + "@")
-      data = self.sock.recv(128)
-    except socket.error, detail:
-      logging.error(detail)
-      logger.error("Ping server error! %s" % self.packets)      
-      self.parsesync(self.packets)
-      break
-    if not data: logger.error("Ping server error! %s" % self.sock.fileno())
-    else:
+      self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      self.sock.connect((HOST_PING, PORT_PING))
+    except:
+      logger.critical("Main server don't work!")
+      sleep(5)
+      sys.exit(0)
+    while True:
       try:
-        self.packets = data.strip()
-        self.packets = self.packets.split("$")
-        for pack in self.packets:
-          answers = pack.strip()
-          answers = pack.split("_")
-          for item in answers:
-            if len(item) > 0:
-              if item[0] == "#":
-                code = item[:4] 
-                if code == CONN_PONG:
-                  logger.info("Ping server success! %s" % self.sock.fileno())
-                  self.sock.send(CONN_PING + "$")
-                elif code == SYNC_SERVER_PACKET:
-                  print "SYNC: " + str(answers)
-                  self.sock.send(SYNC_SERVER_PACKET_APPLY + "$")
-                else:
-                  logger.error("Ping server error! CODE: '%s'" % code)
-                  self.parsesync(self.packets)
-      except socket.error:
-        logger.error("Ping server error! %s" % self.packets)
-        self.parsesync(self.packets)        
-  
+        self.sock.send(CONN_PING + "@")
+        data = self.sock.recv(128)
+      except socket.error, detail:
+        logging.error(detail)
+        logger.error("Ping server error! %s" % self.packets)      
+        self.parsesync(self.packets)
+        break
+      if not data: logger.error("Ping server error! %s" % self.sock.fileno())
+      else:
+        try:
+          self.packets = data.strip()
+          self.packets = self.packets.split("$")
+          for pack in self.packets:
+            answers = pack.strip()
+            answers = pack.split("_")
+            for item in answers:
+              if len(item) > 0:
+                if item[0] == "#":
+                  code = item[:4] 
+                  if code == CONN_PONG:
+                    logger.info("Ping server success! %s" % self.sock.fileno())
+                    self.sock.send(CONN_PING + "$")
+                  elif code == SYNC_SERVER_PACKET:
+                    print "SYNC: " + str(answers)
+                    self.sock.send(SYNC_SERVER_PACKET_APPLY + "$")
+                  else:
+                    logger.error("Ping server error! CODE: '%s'" % code)
+                    self.parsesync(self.packets)
+        except socket.error:
+          logger.error("Ping server error! %s" % self.packets)
+          self.parsesync(self.packets)        
+
 class Ponger(Thread):
   
   def __init__(self):

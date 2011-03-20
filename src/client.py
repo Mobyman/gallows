@@ -22,6 +22,9 @@ logger = logging.getLogger("client")
 logger.setLevel(logging.DEBUG)
 logstream = logging.StreamHandler()
 logstream.setLevel(logging.DEBUG)
+formatter = logging.Formatter("%(asctime)s:  %(message)s")
+logstream.setFormatter(formatter)
+logger.addHandler(logstream)
 
 def answerparse(code="", param=""):
   
@@ -100,12 +103,12 @@ def answerparse(code="", param=""):
     
   elif code == CONN_CLOSE_KICK: #server close
     cli.connected = False
-    logger.debug("You has been kicked!")
+    logger.warning("You has been kicked!")
     parse[CONN_CLOSE_KICK] = True
  
   else:      
     logger.debug("Error code: param: %s" % (code, param))
-    parse[CONN_CLOSE_KICK] = None
+    parse[code] = None
     return parse
   
   
@@ -116,13 +119,26 @@ class Client():
   def connect(self, main = True):
     self.connected = False
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    if main:
-      self.sock.connect((MAIN_HOST, MAIN_PORT))
-    else: 
-      sleep(3)
-      self.sock.connect((SECOND_HOST, SECOND_PORT))
-
-    logging.info("You are connected!")
+    try:
+      if main:
+        self.sock.connect((MAIN_HOST, MAIN_PORT))
+      else: 
+        sleep(3)
+        logger.info("Connecting to alternative server...")
+        self.sock.connect((SECOND_HOST, SECOND_PORT))
+    except socket.error:
+      if main:
+        try:
+          sleep(3)
+          logger.info("Connecting to alternative server...")
+          self.sock.connect((SECOND_HOST, SECOND_PORT))
+        except socket.error:
+          logger.critical("Connecting to alternative server failed...")          
+          logger.critical("Servers don't worked!")
+          sleep(5)
+          sys.exit(0)
+      else:    
+        logger.critical("Servers don't worked!")
     try:
       self.sock.send(QUERY_CONN)
       self.query_result = self.sock.recv(4) 
@@ -130,14 +146,13 @@ class Client():
         logger.info("Connect allowed!")
         self.connected = True
       else:
-        logging.error(self.query_result) 
+        logger.error(self.query_result) 
     except socket.error, detail:
-      logging.error(detail)
+      logger.error(detail)
       if main:
         cli.connect(False)
-        logging.info("Connect to alternative server")
       else:
-        logging.critical("Alternative server down!")
+        logger.critical("Alternative server down!")
         sys.exit(0)
      
     class Listen(Thread):
@@ -149,14 +164,13 @@ class Client():
           try:
             data = cli.sock.recv(1024)
           except socket.error, detail:
-            logging.error(detail)
+            logger.error(detail)
             cli.sock.close()
             cli.connected = False
             if main:
               cli.connect(False)
-              logging.info("Connect to alternative server")
             else:
-              logging.critical("Alternative server down!")
+              logger.critical("Alternative server down!")
               sys.exit(0)
             break
           if not data: break
@@ -180,7 +194,7 @@ class Client():
     
   def send(self, msg = "", code = PACKET_LETTER):
     if self.connected == False:
-      logging.error("You are not connected")
+      logger.error("You are not connected")
     else:
       try:
         if code == PACKET_LETTER:
