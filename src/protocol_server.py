@@ -18,8 +18,10 @@ import socket, threading, select, logging, gallows_logic, re, sys
 
 global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, main_server, pong
 
-HOST_PING, PORT_PING = ("localhost", 14881)
-HOST_PONG, PORT_PONG = ("localhost", 14881)
+HOST_PING,  PORT_PING = ("localhost", 14881)
+HOST_PONG,  PORT_PONG = ("localhost", 14881)
+MAIN_HOST,  MAIN_PORT = ("localhost", 14879) 
+ALT_HOST,   ALT_PORT =  ("localhost", 14880)
 
 ATTEMPT_MAX = 10
 USERNAME = "Prisoner"
@@ -335,13 +337,13 @@ def start():
   print "Started..."
 
 if (options.type == "a"):
-  HOST, PORT = ("localhost", 14879)
+  HOST, PORT = (ALT_HOST, ALT_PORT)
   pinger = Pinger()
   pinger.start()    
   main_server = False
   
 elif (options.type == "m"):    
-  HOST, PORT = ("localhost", 14880)
+  HOST, PORT = (MAIN_HOST, MAIN_PORT)
   ponger = Ponger()
   ponger.start()
   main_server = True
