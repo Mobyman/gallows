@@ -119,6 +119,7 @@ class Client():
     if main:
       self.sock.connect((MAIN_HOST, MAIN_PORT))
     else: 
+      sleep(3)
       self.sock.connect((SECOND_HOST, SECOND_PORT))
 
     logging.info("You are connected!")
@@ -132,8 +133,12 @@ class Client():
         logging.error(self.query_result) 
     except socket.error, detail:
       logging.error(detail)
-      logging.info("Connect to alternative server")
-      cli.connect(False)
+      if main:
+        cli.connect(False)
+        logging.info("Connect to alternative server")
+      else:
+        logging.critical("Alternative server down!")
+        sys.exit(0)
      
     class Listen(Thread):
       def __init__(self):
@@ -147,8 +152,12 @@ class Client():
             logging.error(detail)
             cli.sock.close()
             cli.connected = False
-            logger.info("Alternative server connecting...")
-            cli.connect(False)
+            if main:
+              cli.connect(False)
+              logging.info("Connect to alternative server")
+            else:
+              logging.critical("Alternative server down!")
+              sys.exit(0)
             break
           if not data: break
           else:

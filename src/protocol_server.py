@@ -104,7 +104,7 @@ class Ponger(Thread):
         pong = socket.socket(AF_INET, SOCK_STREAM)
         pong.bind((HOST_PONG, PORT_PONG))
         logger.debug("Ponger server binded")
-        pong.listen(1)
+        pong.listen(5)
         logger.debug("Ponger server listen on port " + str(PORT_PONG))
         sleep(15)
       except socket.error, detail:
@@ -213,7 +213,6 @@ class Server:
                                       usersword = "*" * len(word)
                                       logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
                                     else:
-                                      sleep(10)
                                       gallows.secret   = pinger.secret
                                       gallows.attempts = pinger.attempts
                                       gallows.newuword = pinger.userword
