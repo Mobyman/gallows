@@ -62,7 +62,6 @@ class Pinger(Thread):
       self.sock.connect((HOST_PING, PORT_PING))
     except:
       logger.critical("Main server don't work!")
-      sleep(5)
       sys.exit(0)
     while True:
       try:
@@ -120,7 +119,7 @@ class Ponger(Thread):
           data = pingsock.recv(32)
           ping = data.strip()
           ping = ping.split("$")
-          if not data: logger.info("Pong server error! %s" % pingsock.fileno())
+          if not data: logger.error("Pong server error! %s" % pingsock.fileno())
           else:           
             for item in ping:
               if len(ping) > 0:
@@ -128,15 +127,22 @@ class Ponger(Thread):
                   if item[0] == "#":
                     code = item[:4] 
                     if code == CONN_PING:
+                      if hasattr(gallows, 'secret'):
                         pingsock.send(SYNC_SERVER_PACKET + "_%s_%s_%s_%s$" % (gallows.secret, str(gallows.attempts), gallows.newuword, str(gallows.used_letters)))
                         logger.info("Send: " + SYNC_SERVER_PACKET + "_%s_%s_%s_%s$" % (gallows.secret, str(gallows.attempts), gallows.newuword, str(gallows.used_letters)))
                         sleep(2)
+                      else:
+                        pingsock.send(CONN_PONG + "$")
+                        sleep(2)
+                        break
                     elif code == SYNC_SERVER_PACKET_APPLY:
                         logger.info("SYNC OK! %s" % pingsock.fileno())
+                    elif item[0] != "#":
+                        break
                     else:
-                        logger.info("Pong server error! %s" % pingsock.fileno())        
+                        logger.info("Pong server unknown answer code! CODE: %s" % code)        
       except socket.error, detail:
-        logger.info("Pong server error! %s" % pingsock.fileno())        
+        logger.error("Pong server error! %s" % pingsock.fileno())        
 
 class Server:
     # listen for connections
