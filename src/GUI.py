@@ -1,25 +1,25 @@
-#from client import *
-"""import threading
+from client import *
+import time
+import threading
 
 class thread1(threading.Thread):
-    def __init__(self):
-        Thread.__init__(self)
-        
-
+    
     def run(self):
         while 1:
             if cli.connected==False :
+                mes.set("Waiting for connect")
+                sleep(1)
+                if cli.connected==True :
+                    mes.set("Connected")
                 
-                root.text1("Error")
-                
-            if cli.connected==True :
-                root.text1("Working")
     
 
+            if len(cli.parsedanswer)>0:
+                
+                v.set(cli.parsedanswer[0]['#213'][0])
+                
 
-    thread1().start()
-"""
-
+thread1().start()    
 from Tkinter import *
 root = Tk()
 
@@ -77,7 +77,7 @@ separator.pack(fill=X, padx=5, pady=5)
 
 v=StringVar()
 lab=Label(root,textvariable=v,wraplength="0", anchor=CENTER, justify=CENTER).pack()
-# v.set(cli.parsedanswer[0]['#213'][0]) 
+
 
 text = Text()
 text1=Text()
@@ -87,7 +87,9 @@ e.pack()
 e.focus_set()
 
 def callback():
-    v.set(e.get())
+    cli.send(v.get().strip())
+    a=v.get()
+    print a
 b = Button(root, text="get", width=10, command=callback)
 b.pack()
 
