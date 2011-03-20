@@ -15,7 +15,8 @@ from string import *
 import socket, string, sys, threading, select, time, logging, constants, string, re
 
 global HOST, PORT, LOG, usersword, connected, code, param
-HOST, PORT = "localhost", 14880
+MAIN_HOST,   MAIN_PORT    = "localhost", 14880
+SECOND_HOST, SECOND_PORT  = "localhost", 14879
 connected = [""]
 logger = logging.getLogger("client")
 logger.setLevel(logging.DEBUG)
@@ -99,7 +100,7 @@ def answerparse(code="", param=""):
     
   elif code == CONN_CLOSE_KICK: #server close
     cli.connected = False
-    logger.debug("You has been kicked!") #lst[0] -- isAlternativeServer
+    logger.debug("You has been kicked!")
     parse[CONN_CLOSE_KICK] = True
  
   else:      
@@ -112,10 +113,14 @@ class Client():
   
   parsedanswer = []
     
-  def connect(self):
+  def connect(self, main = True):
     self.connected = False
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    self.sock.connect((HOST, PORT))
+    if main:
+      self.sock.connect((MAIN_HOST, MAIN_PORT))
+    else: 
+      self.sock.connect((SECOND_HOST, SECOND_PORT))
+
     logging.info("You are connected!")
     try:
       self.sock.send(QUERY_CONN)
@@ -128,6 +133,7 @@ class Client():
     except socket.error, detail:
       logging.error(detail)
       logging.info("Connect to alternative server")
+      cli.connect(False)
      
     class Listen(Thread):
       def __init__(self):
@@ -142,6 +148,7 @@ class Client():
             cli.sock.close()
             cli.connected = False
             logger.info("Alternative server connecting...")
+            cli.connect(False)
             break
           if not data: break
           else:
