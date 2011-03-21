@@ -121,17 +121,17 @@ class Client():
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
       if main:
-        self.sock.connect((MAIN_HOST, MAIN_PORT))
+        self.sock.connect((CLI_MAIN_HOST, CLI_MAIN_PORT))
       else: 
         sleep(3)
         logger.info("Connecting to alternative server...")
-        self.sock.connect((SECOND_HOST, SECOND_PORT))
+        self.sock.connect((CLI_ALT_HOST, CLI_ALT_PORT))
     except socket.error:
       if main:
         try:
           sleep(3)
           logger.info("Connecting to alternative server...")
-          self.sock.connect((SECOND_HOST, SECOND_PORT))
+          self.sock.connect((CLI_ALT_HOST, CLI_ALT_PORT))
         except socket.error:
           logger.critical("Connecting to alternative server failed...")          
           logger.critical("Servers don't worked!")
