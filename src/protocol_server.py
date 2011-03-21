@@ -18,10 +18,6 @@ import socket, threading, select, logging, gallows_logic, re, sys
 
 global HOST, PORT, LOG, usersword, ATTEMPT_MAX, USERNAME, main_server, pong
 
-HOST_PING,  PORT_PING = ("localhost", 14881)
-HOST_PONG,  PORT_PONG = ("localhost", 14881)
-MAIN_HOST,  MAIN_PORT = ("localhost", 14879) 
-ALT_HOST,   ALT_PORT =  ("localhost", 14880)
 
 ATTEMPT_MAX = 10
 USERNAME = "Prisoner"
@@ -62,9 +58,10 @@ class Pinger(Thread):
   def run(self):
     try:
       self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      self.sock.connect((HOST_PING, PORT_PING))
+      self.sock.connect((HOST_PONG, PORT_PONG))
     except:
-      logger.critical("Main server don't work!")
+	
+      logger.critical("Main server don't work! %s %s" % (HOST_PING, PORT_PING))
       sys.exit(0)
     while True:
       try:
@@ -337,13 +334,13 @@ def start():
   print "Started..."
 
 if (options.type == "a"):
-  HOST, PORT = (ALT_HOST, ALT_PORT)
+  HOST, PORT = ALT_HOST, ALT_PORT
   pinger = Pinger()
   pinger.start()    
   main_server = False
   
 elif (options.type == "m"):    
-  HOST, PORT = (MAIN_HOST, MAIN_PORT)
+  HOST, PORT = MAIN_HOST, MAIN_PORT
   ponger = Ponger()
   ponger.start()
   main_server = True

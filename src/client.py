@@ -15,8 +15,8 @@ from string import *
 import socket, string, sys, threading, select, time, logging, constants, string, re
 
 global HOST, PORT, LOG, usersword, connected, code, param
-MAIN_HOST,   MAIN_PORT    = "localhost", 14880
-SECOND_HOST, SECOND_PORT  = "localhost", 14879
+
+
 connected = [""]
 logger = logging.getLogger("client")
 logger.setLevel(logging.DEBUG)
