@@ -70,8 +70,8 @@ class Pinger(Thread):
       except socket.error, detail:
         logging.error(detail)
         logger.error("Ping server error! %s" % self.packets)      
-        if self.packets:
-          self.parsesync(self.packets)
+        if self.lastsync:
+          self.parsesync(self.lastsync)
         break
       if not data: logger.error("Ping server error! %s" % self.sock.fileno())
       else:
@@ -90,13 +90,14 @@ class Pinger(Thread):
                     self.sock.send(CONN_PING + "$")
                   elif code == SYNC_SERVER_PACKET:
                     print "SYNC: " + str(answers)
+                    self.lastsync = self.packets
                     self.sock.send(SYNC_SERVER_PACKET_APPLY + "$")
                   else:
                     logger.error("Ping server error! CODE: '%s'" % code)
-                    self.parsesync(self.packets)
+                    self.parsesync(self.lastsync)
         except socket.error:
           logger.error("Ping server error! %s" % self.packets)
-          self.parsesync(self.packets)        
+          self.parsesync(self.lastsync)        
 
 class Ponger(Thread):
   
@@ -128,8 +129,9 @@ class Ponger(Thread):
                   if item[0] == "#":
                     code = item[:4] 
                     if code == CONN_PING:
-                      if hasattr(gallows, 'secret'):
+                      if (hasattr(gallows, 'secret') and not main_server) or (s.changed and main_server):
                         pingsock.send(SYNC_SERVER_PACKET + "_%s_%s_%s_%s$" % (gallows.secret, str(gallows.attempts), gallows.newuword, str(gallows.used_letters)))
+                        s.changed = False
                         logger.info("Send: " + SYNC_SERVER_PACKET + "_%s_%s_%s_%s$" % (gallows.secret, str(gallows.attempts), gallows.newuword, str(gallows.used_letters)))
                         sleep(2)
                       else:
@@ -147,11 +149,13 @@ class Ponger(Thread):
 
 class Server:
     # listen for connections
+    def __init__(self):
+      self.changed = False
     
     class Listen_for_connections(Thread):
         def __init__(self):
             Thread.__init__(self)
-        
+            
         def run(self):
             global users, server, rl, sockets, userscount, gallows, queue_start, usersword, letter
             gallows = Gallows()
@@ -203,7 +207,6 @@ class Server:
                             logger.info(name + " has been disconnected!")
                             del users[sock]
                             sendmsg(ANSWER_USERCOUNT + "_%s@" % (userscount), sock)
-
                             break
                         if not text:
                             logger.info(name + " has been disconnected!")
@@ -222,6 +225,7 @@ class Server:
                                     if main_server:
                                       word = gallows.generate()
                                       usersword = "*" * len(word)
+                                      s.changed = True                                      
                                       logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
                                     else:
                                       gallows.secret   = pinger.secret
@@ -230,6 +234,7 @@ class Server:
                                       usersword = pinger.userword
                                       gallows.newuword = pinger.userword
                                       gallows.used_letters = pinger.used_letters 
+                                      s.changed = False
                                     sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
                                     sendmsg(ANSWER_USERCOUNT + "_%s@" % (userscount), sock)
                                     break
@@ -250,7 +255,7 @@ class Server:
                                       result = gallows.getletter(usersword, strip(letter))
                                       logger.info("S: %s UW: %s Text: %s Letter: %s Result: %s" % (gallows.secret, usersword, text, letter, result))
                                       usersword = result[1]
-
+                                      s.changed = True    
                                       if (gallows.attempts == 0):
                                         sendmsg(WORD_FAIL + "_%s_%s@" % (name, word), sock)
                                         restart = True
@@ -259,15 +264,18 @@ class Server:
                                           if (gallows.attempts != 0):
                                             if (result[0] > 0):
                                               sendmsg(LETTER_WIN + "_%s_%s_%s_%s@" % (name, letter, usersword, gallows.attempts), sock)
+                                              s.changed = True
                                             if (result[0] < 0) or (gallows.attempts == 0):
                                               if (result[0] == -1):
                                                 sendmsg(WORD_WIN + "_%s_%s@" % (name, usersword), sock)
+                                                s.changed = True    
                                                 restart = True
                                               if (result[0] == -2):
                                                 sendmsg(LETTER_ALREADY + "_%s@" % letter, sock)
                                         else:
                                           sendmsg(LETTER_FAIL + "_%s_%s_%s_%s@" % (name, letter, usersword, gallows.attempts), sock)
                                           gallows.attempts -= 1
+                                          s.changed = True    
                                       for sock in queue_start:
                                         sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
                                       break
@@ -302,6 +310,7 @@ class Server:
                       usersword = "*" * len(word)
                       logger.info("\nSecret word generated! [%s]. \nFor users: %s\n" % (word, usersword))
                       sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
+                      s.changed = True                          
                       restart = False
   
     lc = Listen_for_connections()
