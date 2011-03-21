@@ -334,13 +334,13 @@ def start():
   print "Started..."
 
 if (options.type == "a"):
-  HOST, PORT = ALT_HOST, ALT_PORT
+  HOST, PORT = SERV_ALT_HOST, SERV_ALT_PORT
   pinger = Pinger()
   pinger.start()    
   main_server = False
   
 elif (options.type == "m"):    
-  HOST, PORT = MAIN_HOST, MAIN_PORT
+  HOST, PORT = SERV_MAIN_HOST, SERV_MAIN_PORT
   ponger = Ponger()
   ponger.start()
   main_server = True
