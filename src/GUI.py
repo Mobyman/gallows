@@ -3,6 +3,9 @@ import time
 import threading
 import constants
 from Tkinter import *
+
+
+
 #actions&log
 class thread1(threading.Thread):
     
@@ -10,8 +13,8 @@ class thread1(threading.Thread):
         while 1:
             while len(cli.parsedanswer):
                 pop=cli.parsedanswer.pop()
-                if CONN_ALLOW:
-                    text1.insert(END,"Connection allowed"+'\n')
+                #if CONN_ALLOW:
+                 #   text1.insert(END,"Connection allowed"+'\n')
                     
                 #if CONN_CLOSE_KICK:
                     #text1.insert(END,"You were kicked!"+'\n')
@@ -31,7 +34,34 @@ class thread1(threading.Thread):
                             
                             v.set(pop[PACKET_USERWORD][0])
                             text1.insert(END,pop[PACKET_USERWORD][1]+'tries left'+'\n')
-                            
+                            if pop[PACKET_USERWORD][1]=='9':
+                                circle = canvas.create_oval(25, 25, 50, 50, fill="white")
+                                
+                            if pop[PACKET_USERWORD][1]=='8':
+                                canvas.create_line(37, 50, 37, 69)
+
+                            if pop[PACKET_USERWORD][1]=='7':
+                                canvas.create_line(37, 69, 29, 78)
+                                
+                            if pop[PACKET_USERWORD][1]=='6':
+                                canvas.create_line(37, 69, 45, 78)
+
+                            if pop[PACKET_USERWORD][1]=='5':
+                                canvas.create_line(37, 53, 26, 60)
+
+                            if pop[PACKET_USERWORD][1]=='4':
+                                canvas.create_line(37, 53, 48, 60)
+
+                            if pop[PACKET_USERWORD][1]=='3':
+                                canvas.create_line(37, 53, 42, 49) #rope
+                                canvas.create_line(49, 36, 79, 8)   #rope
+
+                            if pop[PACKET_USERWORD][1]=='2':                   
+                                canvas.create_line(79, 8, 79, 87)
+
+                            if pop[PACKET_USERWORD][1]=='1':
+                                canvas.create_line(79, 87, 63, 100)
+                                canvas.create_line(79, 87, 89, 100)
                     if x==LETTER_FAIL:
                         text1.insert(END,"There is no such letter :("+'\n')
     
@@ -182,6 +212,22 @@ N=Button(frame3, text="N",width=3,command=lambda: e.insert(0,"n")).pack(side=LEF
 M=Button(frame3, text="M",width=3,command=lambda: e.insert(0,"m")).pack(side=LEFT)
 e.delete(0,END)
 frame3.pack()
+
+#------picture-----
+canvas = Canvas(root, width=200, height=100)
+"""circle = canvas.create_oval(25, 25, 50, 50, fill="white")
+canvas.create_line(37, 50, 37, 69)
+canvas.create_line(37, 69, 29, 78)
+canvas.create_line(37, 69, 45, 78)
+canvas.create_line(37, 53, 26, 60)
+canvas.create_line(37, 53, 48, 60)
+canvas.create_line(37, 53, 42, 49) #rope
+canvas.create_line(49, 36, 79, 8)   #rope
+canvas.create_line(79, 8, 79, 87)
+canvas.create_line(79, 87, 63, 100)
+canvas.create_line(79, 87, 89, 100)"""
+canvas.pack()
+#-----log-----
 log= Toplevel(root,bd=5,bg="grey")
 log.title("Info log")
 log.geometry("200x200+450+300")
