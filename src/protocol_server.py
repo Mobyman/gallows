@@ -44,7 +44,8 @@ class Pinger(Thread):
 
   def __init__(self):
     Thread.__init__(self)
-    self.packets = None
+    self.packets    = None
+    self.lastsync  = None
     
   def parsesync(self, packets):
     packets = packets[0].split("_")
@@ -72,6 +73,10 @@ class Pinger(Thread):
         logger.error("Ping server error! %s" % self.packets)      
         if self.lastsync:
           self.parsesync(self.lastsync)
+        else:
+          logger.error("Main server not send sync packet! :(")
+          sleep(5)
+          sys.exit(0)
         break
       if not data: logger.error("Ping server error! %s" % self.sock.fileno())
       else:
