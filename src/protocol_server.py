@@ -168,7 +168,7 @@ class Server:
             queue_start = []
             try:
                 server = socket.socket(AF_INET, SOCK_STREAM)
-		server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 server.bind((HOST, PORT))
                 logger.debug("Server binded")
                 server.listen(1)
@@ -194,6 +194,7 @@ class Server:
                     rl, wl, el = select.select(sockets, [], [], 3)
                 except select.error, detail:
                     logger.error(detail)
+                    new = None                    
                     break
                 for n in rl:
                     if n == server.fileno():
@@ -213,10 +214,12 @@ class Server:
                             userscount -= 1
                             logger.info(name + " has been disconnected!")
                             del users[sock]
+                            new = None
                             sendmsg(ANSWER_USERCOUNT + "_%s@" % (userscount), sock)
                             break
                         if not text:
                             logger.info(name + " has been disconnected!")
+                            new = None
                             sleep(1)
                             userscount -= 1
                             sock.close()
@@ -296,6 +299,7 @@ class Server:
                                   kick = True
                             except socket.error, detail:
                                 logger.error(detail)
+                                new = None
                                 break
                             logger.debug(str(name) + ": " + text)
 

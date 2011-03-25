@@ -34,7 +34,11 @@ def answerparse(code="", param=""):
   if param != "":
     param = param.strip()
     lst = param.split('_')
-          
+  
+  #if code == CONN_PONG:
+    #sleep(3)
+    #cli.send(
+            
   if code == PACKET_USERWORD: #userword
     if lst.__len__() == 2:
       parse[PACKET_USERWORD] = lst
@@ -115,19 +119,20 @@ def answerparse(code="", param=""):
 class Client():
   
   parsedanswer = []
-    
+  
   def connect(self, main = True):
+    self.main = main
     self.connected = False
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-      if main:
+      if self.main:
         self.sock.connect((CLI_MAIN_HOST, CLI_MAIN_PORT))
       else: 
         sleep(3)
         logger.info("Connecting to alternative server...")
         self.sock.connect((CLI_ALT_HOST, CLI_ALT_PORT))
     except socket.error:
-      if main:
+      if self.main:
         try:
           sleep(3)
           logger.info("Connecting to alternative server...")
@@ -149,7 +154,7 @@ class Client():
         logger.error(self.query_result) 
     except socket.error, detail:
       logger.error(detail)
-      if main:
+      if self.main:
         cli.connect(False)
       else:
         logger.critical("Alternative server down!")
@@ -162,18 +167,24 @@ class Client():
       def run(self):
         while True:
           try:
-            data = cli.sock.recv(1024)
+            data = cli.sock.recv(128)
           except socket.error, detail:
             logger.error(detail)
             cli.sock.close()
             cli.connected = False
-            if main:
+            if cli.main:
               cli.connect(False)
             else:
               logger.critical("Alternative server down!")
               sys.exit(0)
             break
-          if not data: break
+          if not data:
+            if cli.main:
+              cli.connect(False)
+            else:
+              logger.critical("Alternative server down!")
+              sys.exit(0)
+            break
           else:
             answer = data.strip()
             answer = answer.split("@")
@@ -187,6 +198,9 @@ class Client():
                       cli.parsedanswer.append(answerparse(code, param))
                     else:
                       cli.parsedanswer.append(answerparse(code))
+                  #else:
+                    #cli.send(CONN_PING) 
+                   
 
     listen = Listen()
     listen.start()
@@ -205,7 +219,17 @@ class Client():
             logger.error("Entered char not letter!")
       except socket.error, detail:
         print detail
-        cli.disconnect()
+      try:
+          if self.main:
+            try:
+              sleep(10)
+              self.sock.close()              
+              logger.info("Connecting to alternative server...")
+              cli.connect(False)
+            except:
+              cli.disconnect()  
+          else: 
+            cli.disconnect()            
       except NameError, detail:
         print detail
 
