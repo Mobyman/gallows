@@ -219,19 +219,19 @@ class Client():
             logger.error("Entered char not letter!")
       except socket.error, detail:
         print detail
-      try:
-          if self.main:
-            try:
-              sleep(10)
-              self.sock.close()              
-              logger.info("Connecting to alternative server...")
-              cli.connect(False)
-            except:
-              cli.disconnect()  
-          else: 
-            cli.disconnect()            
-      except NameError, detail:
-        print detail
+        try:
+            if self.main:
+              try:
+                sleep(10)
+                self.sock.close()              
+                logger.info("Connecting to alternative server...")
+                cli.connect(False)
+              except:
+                cli.disconnect()  
+            else: 
+              cli.disconnect()            
+        except NameError, detail:
+          print detail
 
   def disconnect(self):
     global getout
