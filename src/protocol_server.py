@@ -112,6 +112,7 @@ class Ponger(Thread):
   def run(self):
       try:
         pong = socket.socket(AF_INET, SOCK_STREAM)
+	pong.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         pong.bind((HOST_PONG, PORT_PONG))
         logger.debug("Ponger server binded")
         pong.listen(5)
@@ -167,6 +168,7 @@ class Server:
             queue_start = []
             try:
                 server = socket.socket(AF_INET, SOCK_STREAM)
+		server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 server.bind((HOST, PORT))
                 logger.debug("Server binded")
                 server.listen(1)
