@@ -112,7 +112,7 @@ class Ponger(Thread):
   def run(self):
       try:
         pong = socket.socket(AF_INET, SOCK_STREAM)
-	pong.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+      	pong.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         pong.bind((HOST_PONG, PORT_PONG))
         logger.debug("Ponger server binded")
         pong.listen(5)
@@ -127,7 +127,11 @@ class Ponger(Thread):
           data = pingsock.recv(32)
           ping = data.strip()
           ping = ping.split("$")
-          if not data: logger.error("Pong server error! %s" % pingsock.fileno())
+          if not data:
+            logger.error("Pong server error! %s" % pingsock.fileno())
+            sleep(5)
+            pingsock, addr = pong.accept()            
+            pingsock.send(SYNC_SERVER_PACKET + "_%s_%s_%s_%s$" % (gallows.secret, str(gallows.attempts), gallows.newuword, str(gallows.used_letters)))
           else:           
             for item in ping:
               if len(ping) > 0:
