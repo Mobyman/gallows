@@ -34,10 +34,6 @@ def answerparse(code="", param=""):
   if param != "":
     param = param.strip()
     lst = param.split('_')
-  
-  #if code == CONN_PONG:
-    #sleep(3)
-    #cli.send(
             
   if code == PACKET_USERWORD: #userword
     if lst.__len__() == 2:
@@ -198,9 +194,6 @@ class Client():
                       cli.parsedanswer.append(answerparse(code, param))
                     else:
                       cli.parsedanswer.append(answerparse(code))
-                  #else:
-                    #cli.send(CONN_PING) 
-                   
 
     listen = Listen()
     listen.start()
