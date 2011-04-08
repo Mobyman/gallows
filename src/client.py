@@ -239,4 +239,6 @@ class Client():
     logger.info("Client closed")
   
 cli = Client()
-cli.connect()
+
+if __name__ == '__main__':
+  cli.connect()
