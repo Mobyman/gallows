@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""
-@module: server protocol module for gallows
-@license: GNU GPL v2
-@author: Egorov Ilya
-@version: 0.7
-"""
 from socket import *
 from threading import *
 from select import select
