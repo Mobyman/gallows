@@ -294,7 +294,14 @@ class Server:
                                     sendmsg(PACKET_USERWORD + "_%s_%s@" % (usersword, gallows.attempts), sock)
                                     restart = True
                                     logger.info("Userscount is %s" % (userscount))
-                                    
+                                  if lst[0] == CONN_CLOSE_CLI:
+                                    sendmsg("Good bye!", sock)
+                                    logger.info(name + " has been disconnected!")
+                                    userscount -= 1
+                                    sock.close()
+                                    new = None
+                                    del users[sock]
+                                    sendmsg("%s has been disconnected!" % (name), sock)       
                                   else:
                                     kick = True
                                 else:

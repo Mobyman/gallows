@@ -119,6 +119,7 @@ class Client():
   def connect(self, main = True):
     self.main = main
     self.connected = False
+    self.disconnected = False
     self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
       if self.main:
@@ -235,8 +236,10 @@ class Client():
     self.sock.close()
     sleep(1)
     logger.info("Client closed the connection\n")
-    self.sock.close()
     logger.info("Client closed")
+    cli.connected = False
+    cli.disconnected = True
+    sys.exit(0)
   
 cli = Client()
 
